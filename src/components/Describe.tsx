@@ -1,5 +1,5 @@
-import Tippy from '@tippyjs/react/headless';
 import React from 'react';
+import Tippy from '@tippyjs/react/headless';
 import { BiInfoCircle } from 'react-icons/bi';
 
 const Describe = ({ title, desc }: { title: string; desc: string }) => {

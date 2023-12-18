@@ -1,16 +1,40 @@
 'use client';
 import React, { useRef, FormEvent } from 'react';
-import AccountsLayout from '../layout';
 import { useRouter } from 'next/navigation';
-import axios from 'axios';
-import { signUp } from '@/lib/account';
+import { toast } from 'react-toastify';
+
+import AccountsLayout from '../layout';
+import UserService from '@/service/account';
+
 const SignUp = () => {
+    // ref
     const router = useRouter();
     const nameRef = useRef<HTMLInputElement>(null);
     const emailRef = useRef<HTMLInputElement>(null);
     const passwordRef = useRef<HTMLInputElement>(null);
     const confirmPasswordRef = useRef<HTMLInputElement>(null);
 
+    // Action
+    const handleCreateAccounts = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const name = nameRef.current?.value || '';
+        const email = emailRef.current?.value || '';
+        const password = passwordRef.current?.value || '';
+        const confirmPassword = confirmPasswordRef.current?.value || '';
+        if (!name || !email || !password || !(password == confirmPassword)) {
+            toast.error('Đăng ký không thành công. Xin kiểm tra lại dữ liệu!');
+            return;
+        }
+        try {
+            const userData = await UserService.signUp({ username: name, email, password });
+            router.replace('/accounts/signIn');
+            console.log('Post Successful', userData);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    // Render
     const Input = React.forwardRef<
         HTMLInputElement,
         {
@@ -37,22 +61,7 @@ const SignUp = () => {
             {title}
         </button>
     );
-    const handleCreateAccounts = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const name = nameRef.current?.value || '';
-        const email = emailRef.current?.value || '';
-        const password = passwordRef.current?.value || '';
-        const confirmPassword = confirmPasswordRef.current?.value || '';
-        if (!name || !email || !password || !(password == confirmPassword)) return;
-        console.log('hallo');
-        try {
-            const userData = await signUp({ username: name, email, password });
-            router.replace('/accounts/signIn');
-            console.log('Post Successful', userData);
-        } catch (error) {
-            console.error(error);
-        }
-    };
+
     return (
         <AccountsLayout>
             <h5 className="text-center mb-4 text-2xl text-red-500">Create accounts</h5>

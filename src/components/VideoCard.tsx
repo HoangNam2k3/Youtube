@@ -1,15 +1,19 @@
 'use client';
+import React, { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import React, { useRef, useState, useEffect } from 'react';
+
+import VideoService from '@/service/video';
 
 interface VideoCardProps {
     video: Video;
     isRow?: boolean;
     channel: Channel;
+    videoStyle?: string;
 }
 
-const VideoCard: React.FC<VideoCardProps> = ({ isRow = false, video, channel }) => {
+const VideoCard: React.FC<VideoCardProps> = ({ isRow = false, video, channel, videoStyle = '' }) => {
+    // State & ref
     const router = useRouter();
 
     const { title, url, views, upload_date } = video;
@@ -33,8 +37,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ isRow = false, video, channel }) 
         if (videoRef.current) {
             videoRef.current.addEventListener('timeupdate', handleTimeUpdate);
         }
-        console.log(title, url, views);
-        console.log('channel', channel);
 
         return () => {
             if (videoRef.current) {
@@ -45,6 +47,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ isRow = false, video, channel }) 
         };
     }, []);
 
+    // Action
     const handleMouseEnter = () => {
         if (videoRef.current && videoRef.current.paused) {
             videoRef.current
@@ -72,17 +75,22 @@ const VideoCard: React.FC<VideoCardProps> = ({ isRow = false, video, channel }) 
         const seconds = Math.floor(time % 60);
         return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
+    const handleVideoClick = async (video_id: number) => {
+        const respond = await VideoService.updateVideoView({ video_id });
+        if (respond) router.push(`/watch/${video_id}?video_id=${video_id}`);
+    };
 
+    // Render
     return (
         <div
-            onClick={() => {
-                router.push(`/watch/${video.video_id}?video_id=${video.video_id}`);
-            }}
-            className={`flex gap-4 ${isRow ? 'flex-row' : 'flex-col'}`}
+            onClick={() => handleVideoClick(video.video_id)}
+            className={`flex cursor-pointer gap-4 ${isRow ? 'flex-row' : 'flex-col'}`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
-            <div className="min-w-[170px] rounded-lg overflow-hidden object-cover relative aspect-video">
+            <div
+                className={`min-w-[170px] ${videoStyle} rounded-lg overflow-hidden object-cover relative aspect-video`}
+            >
                 <video
                     ref={videoRef}
                     className="absolute top-0 left-0 w-full h-full"
@@ -90,15 +98,16 @@ const VideoCard: React.FC<VideoCardProps> = ({ isRow = false, video, channel }) 
                     title={title}
                     controls={false}
                     muted={true}
+                    poster={video.thumbnail ? video.thumbnail : ''}
                 />
                 {isPlaying && (
                     <div className="absolute bottom-2 right-2 text-white select-none">{formatTime(currentTime)}</div>
                 )}
             </div>
             <div className="flex flex-row">
-                {!isRow && (
+                {(!isRow || videoStyle) && (
                     <Link href={`/${channel_id}/channel`} className="w-9 z-10 h-9 rounded-full overflow-hidden mr-3">
-                        <img className="w-full h-full" src={avatar} alt={channel_name} />
+                        <img className="w-full h-full object-cover" loading="lazy" src={avatar} alt={channel_name} />
                     </Link>
                 )}
                 <div className="flex-1">

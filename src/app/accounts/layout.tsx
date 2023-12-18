@@ -12,7 +12,8 @@ const AccountsLayout = ({ children }: { children: React.ReactNode }) => {
                             <div className="w-72 h-full">
                                 <img
                                     className="h-full"
-                                    title="img"
+                                    title="Intro"
+                                    loading="lazy"
                                     src="https://cdn.mekoong.com/wp-content/uploads/2022/11/7151813419694296346-7.jpg"
                                 />
                             </div>

@@ -21,7 +21,7 @@ interface Video {
     title: string;
     description: string;
     url: string;
-    thumbnail_url?: string;
+    thumbnail?: string;
     views: number;
     upload_date: string;
     category_id?: number;

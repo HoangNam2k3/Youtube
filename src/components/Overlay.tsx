@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 
-const Overlay = ({
-    children,
-    isShow,
-    onClose,
-}: {
+interface OverlayProps {
     children: React.ReactNode;
     isShow: boolean;
     onClose: () => void;
-}) => {
+}
+
+const Overlay = ({ children, isShow, onClose }: OverlayProps) => {
+    // State
     const [show, setShow] = useState(isShow);
 
+    // Action
     const handleClose = () => {
         setShow(false);
         onClose();
     };
 
+    // Render
     return show ? (
         <div className="z-50 relative">
             <div onClick={handleClose} className="bg-black/50 z-10 fixed top-0 bottom-0 right-0 left-0" />

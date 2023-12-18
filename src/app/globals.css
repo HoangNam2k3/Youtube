@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 @import 'tippy.js/dist/tippy.css';
-
+@import 'react-toastify/dist/ReactToastify.css';
 :root {
     --foreground-rgb: 60, 60, 60;
     --background-start-rgb: 255, 255, 255;

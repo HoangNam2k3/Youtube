@@ -1,9 +1,11 @@
 'use client';
-import React, { FormEvent, useRef, useState, useEffect } from 'react';
-import AccountsLayout from '../layout';
+import React, { FormEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from '@/lib/account';
-import { getLocalData, removeLocalData, saveLocalData } from '@/utils/helper';
+import { toast } from 'react-toastify';
+
+import AccountsLayout from '../layout';
+import UserService from '@/service/account';
+import { saveLocalData } from '@/utils/helper';
 
 const SignIn = () => {
     const router = useRouter();
@@ -16,13 +18,13 @@ const SignIn = () => {
         const password = passwordRef.current?.value || '';
 
         try {
-            const userData: User = await signIn({ email, password });
-            console.log('userclx', userData);
-            if (userData) saveLocalData({ user: userData });
-
-            router.push('/');
-            // console.log(userData);
+            const userData: User = await UserService.signIn({ email, password });
+            if (userData) {
+                saveLocalData({ user: userData });
+                router.push('/');
+            } else toast.error('Đăng nhập không thành công. Kiểm tra lại dữ liệu!');
         } catch (error) {
+            toast.error('Đăng nhập không thành công. Kiểm tra lại dữ liệu!');
             console.error(error);
         }
     };

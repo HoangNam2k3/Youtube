@@ -1,42 +1,66 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import Describe from './Describe';
-import axios from 'axios';
+import { toast } from 'react-toastify';
 
-export const UploadVideo = ({ url = '', fileName = '' }) => {
+import Describe from './Describe';
+import { useChannelLocalStorageData } from '@/context/store';
+import VideoService from '@/service/video';
+import { getCategories } from '@/service/category';
+
+interface UploadVideoProps {
+    url?: string;
+    fileName?: string;
+    onCloseOverlay: () => void;
+}
+
+export const UploadVideo = ({ url = '', fileName = '', onCloseOverlay }: UploadVideoProps) => {
     const title = fileName.split('.').slice(0, -1).join('.');
 
-    const [videoData, setVideoData] = useState({
-        category_id: 1,
-        channel_id: 6,
-        title: title,
-        description: '',
-        url: url,
-        thumbnail: '',
-    });
+    const channelLocal = useChannelLocalStorageData();
+    const [videoData, setVideoData] = useState<Video | null>(null);
+    const [categories, setCategory] = useState<Category[] | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const category_list = await getCategories();
+            setCategory(category_list);
+            if (channelLocal) {
+                setVideoData({
+                    category_id: 1,
+                    channel_id: channelLocal.channel_id,
+                    title: title,
+                    description: '',
+                    url: url,
+                    thumbnail: '',
+                } as Video);
+            }
+        };
+
+        fetchData();
+    }, [channelLocal]);
+
     const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setVideoData({
             ...videoData,
             category_id: Number(event.target.value),
-        });
+        } as Video);
     };
     const handleTitleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setVideoData({
             ...videoData,
             title: event.target.value,
-        });
+        } as Video);
     };
     const handleDescriptionChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setVideoData({
             ...videoData,
             description: event.target.value,
-        });
+        } as Video);
     };
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
             const selectedFile = event.target.files[0];
             const reader = new FileReader();
-            console.log(event.target.files);
 
             reader.onload = (e) => {
                 if (e.target) {
@@ -44,21 +68,26 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
                     setVideoData({
                         ...videoData,
                         thumbnail: videoUrl,
-                    });
+                    } as Video);
                 }
             };
             reader.readAsDataURL(selectedFile);
         }
     };
-    const handlePostVideo = () => {
-        console.log('video', videoData);
-
-        axios
-            .post('https://localhost:7196/api/Video', videoData)
-            .then((res) => {
-                console.log('Post Successful', res.data);
-            })
-            .catch((err) => console.log('Error posting', err));
+    const handlePostVideo = async () => {
+        if (videoData) {
+            if (!videoData.title) {
+                toast.error('Tiêu đề không được để trống!');
+                return;
+            }
+            try {
+                const respond = await VideoService.createVideo({ videoData });
+                if (respond) onCloseOverlay();
+            } catch {
+                toast.error('Đăng video không thành công!');
+                console.log('Upload fail');
+            }
+        }
     };
     return (
         <div className="relative flex resize-none max-w-5xl gap-6">
@@ -73,7 +102,7 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
                         placeholder="Thêm tiêu đề để mô tả video của bạn"
                         maxLength={500}
                         className="w-full outline-none min-h-[60px]"
-                        value={videoData.title}
+                        value={videoData?.title}
                     />
                 </div>
                 <div className="border rounded px-3 py-1">
@@ -85,7 +114,7 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
                         onChange={handleDescriptionChange}
                         placeholder="Giới thiệu về video của bạn cho người xem"
                         className="w-full outline-none min-h-[170px]"
-                        value={videoData.description}
+                        value={videoData?.description}
                         maxLength={1000}
                     />
                 </div>
@@ -97,11 +126,7 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
                     </span>
                     <div className="flex items-center gap-3">
                         <div className="w-44 aspect-video mt-1">
-                            <img
-                                src={videoData.thumbnail}
-                                title={videoData.title}
-                                className="w-full h-full bg-red-200"
-                            />
+                            <img src={videoData?.thumbnail} title="Video image" className="w-full h-full bg-red-200" />
                         </div>
                         <input onChange={handleFileChange} title="Thumbnail" type="file" accept="img/*" />
                     </div>
@@ -112,16 +137,17 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
                         Thêm video của bạn vào một danh mục để người xem dễ dàng tìm thấy hơn
                     </span>
                     <select
-                        value={videoData.category_id}
+                        value={videoData?.category_id}
                         onChange={handleCategoryChange}
                         title="Category"
                         className="outline-none border p-3 min-w-[312px]"
                     >
-                        {CateGory.map((item) => (
-                            <option key={item.id} value={item.id}>
-                                {item.name}
-                            </option>
-                        ))}
+                        {categories &&
+                            categories.map((item) => (
+                                <option key={item.category_id} value={item.category_id}>
+                                    {item.category_name}
+                                </option>
+                            ))}
                     </select>
                 </div>
             </div>
@@ -131,7 +157,7 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
                     <span>{fileName}</span>
                 </div>
             </div>
-            <div className="fixed right-6 bg-blue-400 bottom-12 rounded">
+            <div className="fixed right-6 bg-blue-500 bottom-24 rounded">
                 <button onClick={handlePostVideo} className="px-4 py-1 text-white font-semibold">
                     Đăng lên
                 </button>
@@ -139,41 +165,3 @@ export const UploadVideo = ({ url = '', fileName = '' }) => {
         </div>
     );
 };
-const CateGory = [
-    {
-        id: 1,
-        name: 'Danh muc 1',
-    },
-    {
-        id: 2,
-        name: 'Danh muc 2',
-    },
-    {
-        id: 3,
-        name: 'Danh muc 3',
-    },
-    {
-        id: 4,
-        name: 'Danh muc 4',
-    },
-    {
-        id: 5,
-        name: 'Danh muc 5',
-    },
-    {
-        id: 6,
-        name: 'Danh muc 6',
-    },
-    {
-        id: 7,
-        name: 'Danh muc 7',
-    },
-    {
-        id: 8,
-        name: 'Danh muc 8',
-    },
-    {
-        id: 9,
-        name: 'Danh muc 9',
-    },
-];

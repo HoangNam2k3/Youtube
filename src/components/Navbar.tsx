@@ -1,13 +1,15 @@
 'use client';
+import React, { useEffect, useRef, useState } from 'react';
 import Tippy from '@tippyjs/react/headless';
 import Link from 'next/link';
+import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react';
 import { BiUserCircle, BiSearch, BiArrowBack, BiVideoPlus, BiCaretRightSquare, BiLogOutCircle } from 'react-icons/bi';
+
 import Overlay from './Overlay';
-import axios from 'axios';
-import { getLocalData, removeLocalData } from '@/utils/helper';
-import { useLocalStorageData } from '@/context/store';
+import { removeLocalData } from '@/utils/helper';
+import { useChannelLocalStorageData, useLocalStorageData } from '@/context/store';
+import ChannelService from '@/service/channel';
 
 const Navbar = () => {
     // State và refs
@@ -19,50 +21,40 @@ const Navbar = () => {
     const [showOverlay, setShowOverlay] = useState(false);
     const [createdChannel, setCreatedChannel] = useState<Channel | null>(null);
     const [isChannel, setIsChannel] = useState(false);
-    // const [userLocal, setUserLocal] = useState<User | null>(null);
 
     const userLocal = useLocalStorageData();
-    // Xử lý đăng nhập, lấy dữ liệu người dùng từ localStorage khi component mount
-    // useEffect(() => {
-    //     const fetchData = async () => {
-    //         // const userData = await getLocalData();
-    //         if (userData) setUserLocal(userData);
-    //     };
-    //     fetchData();
-    // }, []);
+    const channelLocal = useChannelLocalStorageData();
+
     useEffect(() => {
         const fetchData = async () => {
-            if (userLocal && !createdChannel) {
+            if (userLocal) {
                 try {
-                    // setUserLocal(userLocal);
                     setIsLogin(true);
-                    console.log('xx', userLocal);
-
-                    const res = await axios.get(`https://localhost:7196/api/Channel/user/${userLocal?.user_id}`);
-                    const getChannel = res.data as Channel;
-                    if (!getChannel) {
+                    if (channelLocal) {
+                        setCreatedChannel(channelLocal);
+                        setIsChannel(true);
+                    } else {
                         setCreatedChannel((prevChannel: Channel | null) => ({
                             ...prevChannel!,
                             user_id: userLocal.user_id,
                             channel_name: userLocal.username,
                         }));
                         setIsChannel(false);
-                        return;
                     }
-                    setCreatedChannel(getChannel);
-                    setIsChannel(true);
                 } catch (error) {
                     console.error('Invalid JSON format in localStorage:', error);
                 }
             }
         };
-        console.log(userLocal);
-
         fetchData();
-    }, [createdChannel, userLocal]);
-    useEffect(() => {
-        console.log('userdata', userLocal);
-    }, [userLocal]);
+    }, [userLocal, channelLocal]);
+    useEffect(() => {}, [userLocal]);
+    useEffect(() => {}, [channelLocal]);
+    // useEffect(() => {
+    //     console.log('channelLocal', createdChannel);
+    // }, [createdChannel]);
+
+    // Action
     // Xử lý khi người dùng nhấn nút tìm kiếm
     const handleSearchButton = () => {
         if (inputRef.current) {
@@ -105,33 +97,37 @@ const Navbar = () => {
         setShowOverlay(false);
     };
     // Xử lý tạo kênh mới
-    const handleCreateChannel = () => {
-        axios
-            .post('https://localhost:7196/api/Channel', createdChannel)
-            .then((res) => {
-                const newChannel = res.data as Channel;
-                setCreatedChannel(newChannel);
-                handleOverlayClose();
-                console.log(res);
-            })
-            .catch((err) => console.log('Error', err));
-
-        console.log(createdChannel);
+    const handleCreateChannel = async () => {
+        if (createdChannel) {
+            try {
+                const newChannel = (await ChannelService.createChannel({ channel: createdChannel })) as Channel;
+                if (newChannel) {
+                    setCreatedChannel(newChannel);
+                    setIsChannel(true);
+                    handleOverlayClose();
+                } else {
+                    console.error('Failed to create new channel');
+                }
+            } catch (error) {
+                toast.error('Tạo lỗi, kiểm tra lại!');
+                console.error('Error creating new channel:', error);
+            }
+        }
     };
-    // JSX cho các phần giao diện Navbar
-    const renderLogo = (
+    // Render
+    const RenderLogo = (
         <Link href={'/'}>
             <img className="w-[90px] h-5 mr-9" src="/logo.png" alt="Logo" />
         </Link>
     );
 
-    const renderSearchButton = (
+    const RenderSearchButton = (
         <button onClick={handleSearchButton} className="sm:hidden" title="Search">
             <BiSearch className="text-2xl" />
         </button>
     );
 
-    const renderUser = (
+    const RenderUser = (
         <button
             onClick={() => router.push('accounts/signIn')}
             className="flex items-center border rounded-full text-blue-400 whitespace-nowrap gap-1 px-2 h-9"
@@ -141,14 +137,15 @@ const Navbar = () => {
         </button>
     );
 
-    const renderAvatar = (
+    const RenderAvatar = (
         <div className="flex items-center">
             <Link href={'/studio/uploads'} className="rounded-full p-2 hover:bg-[#e5e5e5]" title="Create">
                 <BiVideoPlus className="text-3xl" />
             </Link>
             <Tippy
-                visible
+                // visible
                 interactive
+                offset={[20, 0]}
                 render={() => (
                     <div className="shadow-xl bg-white rounded-xl py-3 z-40 w-[300px]">
                         <div className="flex flex-col">
@@ -197,7 +194,7 @@ const Navbar = () => {
             >
                 <button className="mx-4 rounded-full w-8 h-8 overflow-hidden">
                     <img
-                        className="object-cover"
+                        className="object-cover w-full h-full"
                         alt="avatar"
                         src={isChannel && createdChannel?.avatar ? createdChannel.avatar : '/unnamed.png'}
                     />
@@ -205,7 +202,7 @@ const Navbar = () => {
             </Tippy>
         </div>
     );
-    const renderCreateChannel = (
+    const RenderCreateChannel = (
         <Overlay isShow onClose={handleOverlayClose}>
             <div className="min-w-[730px] p-5">
                 <h5 className="text-2xl font-semibold">Cách bạn sẽ xuất hiện</h5>
@@ -267,7 +264,7 @@ const Navbar = () => {
     return (
         <>
             <nav className="z-50 flex justify-between items-center h-14 px-4 sticky bg-white top-0 w-full">
-                {!show ? renderLogo : null}
+                {!show ? RenderLogo : null}
                 {show && (
                     <button className="mr-4" onClick={() => setShow(false)} title="Back">
                         <BiArrowBack className="text-xl" />
@@ -277,6 +274,10 @@ const Navbar = () => {
                     className={`max-w-[720px] ${
                         show ? 'flex' : 'hidden'
                     } sm:flex w-full mx-4 items-center border h-10 rounded-full overflow-hidden`}
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        router.push(`/search?query=${inputRef.current?.value}`);
+                    }}
                 >
                     <input
                         ref={inputRef}
@@ -285,6 +286,7 @@ const Navbar = () => {
                         type="text"
                     />
                     <button
+                        type="submit"
                         title="Search"
                         className="w-20 flex justify-center items-center border-l h-full bg-[#f8f8f8] hover:bg-[#f0f0f0]"
                     >
@@ -293,14 +295,14 @@ const Navbar = () => {
                 </form>
                 {!show && (
                     <div className="flex items-center gap-4">
-                        {renderSearchButton}
-                        {isLogin ? renderAvatar : renderUser}
+                        {RenderSearchButton}
+                        {isLogin ? RenderAvatar : RenderUser}
                     </div>
                 )}
             </nav>
-            {showOverlay && renderCreateChannel}
+            {showOverlay && RenderCreateChannel}
         </>
     );
 };
 
-export default Navbar;
+export default React.memo(Navbar);
